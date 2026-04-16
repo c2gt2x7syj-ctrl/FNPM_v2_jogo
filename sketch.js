@@ -1,12 +1,12 @@
 // ============================================================
 //  FNPM v2 — OCP Sets | p5.js  (espaco logico 1920x1080)
-//  Fluxo: START → LOGIN → LOADING → PLAYING → RANKING
+//  Fluxo: START → TV_TRANSITION → LOGIN → TV_TRANSITION2 → LOADING → LOADING_BAR → PLAYING → RANKING
 // ============================================================
 
 const LW = 1920, LH = 1080;
 let ratio = 1, ox = 0, oy = 0;
 
-// 5 estados de jogo
+// 8 estados de jogo
 let gameState = "START";
 let currentUser = { nome: "", email: "" };
 
@@ -23,7 +23,7 @@ let imgCimaSeta, imgBaixoSeta, imgDireitaSeta;
 let imgFundoLoading;
 let imgLoginScreen;
 let imgRankingBg;
-let fonteClarendon, somColisao, somTrilha, somGameplay, somColeta;
+let fonteClarendon, somTrilha, somGameplay, somColeta;
 let sonsColisao = [];
 
 // Estado do jogo
@@ -54,7 +54,6 @@ let _top5Cache = [];
 function preload() {
   fonteClarendon = loadFont('Clarendon_-Regular.ttf');
   soundFormats('mp3', 'wav');
-  somColisao  = loadSound('caralho.mp3');
   somTrilha   = loadSound('trilha_jogo.wav');
   somGameplay = loadSound('trilha_gameplay.wav');
   somColeta   = loadSound('pedidos_coleta.mp3');
@@ -112,8 +111,6 @@ function setup() {
   rectMode(CENTER);
   textAlign(CENTER, CENTER);
   textFont(fonteClarendon);
-  // Limpar ranking para deploy
-  localStorage.removeItem('fnpm_ranking');
   // Pixelizar personagens
   for (var i = 0; i < djChars.length; i++) {
     djChars[i] = pixelate(djChars[i], 6);
@@ -233,7 +230,7 @@ function registerLead() {
   currentUser.nome  = nome;
   currentUser.email = email;
 
-  // Enviar lead para CSV local via servidor
+  // Enviar lead para API Vercel (proxy para Google Sheets)
   fetch('/api/lead', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -731,6 +728,7 @@ function drawRankingScreen() {
 function keyPressed() {
   // START → TV_TRANSITION → LOGIN
   if (gameState === "START" && key === ' ') {
+    try { userStartAudio(); } catch(e) {}
     tvTransitionFrame = 0;
     gameState = "TV_TRANSITION";
   }
