@@ -230,7 +230,7 @@ function registerLead() {
   currentUser.nome  = nome;
   currentUser.email = email;
 
-  // Enviar lead para CSV local via servidor
+  // Enviar lead para API Vercel (proxy para Google Sheets)
   fetch('/api/lead', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
