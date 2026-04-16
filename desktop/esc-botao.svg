@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="115px" height="83px" viewBox="0 0 115 83" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <title>Group</title>
+    <defs>
+        <radialGradient cx="38.1108368%" cy="48.985545%" fx="38.1108368%" fy="48.985545%" r="56.6690975%" gradientTransform="translate(0.3811, 0.4899), scale(0.7022, 1), translate(-0.3811, -0.4899)" id="radialGradient-1">
+            <stop stop-color="#3FA9F5" offset="0%"></stop>
+            <stop stop-color="#59A2EA" offset="4%"></stop>
+            <stop stop-color="#8099DC" offset="10%"></stop>
+            <stop stop-color="#A291CF" offset="16%"></stop>
+            <stop stop-color="#BF8AC4" offset="24%"></stop>
+            <stop stop-color="#D684BB" offset="32%"></stop>
+            <stop stop-color="#E880B4" offset="41%"></stop>
+            <stop stop-color="#F57DAF" offset="52%"></stop>
+            <stop stop-color="#FC7BAC" offset="67%"></stop>
+            <stop stop-color="#FF7BAC" offset="100%"></stop>
+        </radialGradient>
+    </defs>
+    <g id="Page-1" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <g id="Ranking_screen" transform="translate(-1432, -481)">
+            <g id="Group" transform="translate(1435, 484)">
+                <rect id="Rectangle-2" stroke="url(#radialGradient-1)" stroke-width="5" fill="#49CD57" x="0" y="0" width="109.35" height="76.79"></rect>
+                <text id="ESC" font-family="Clarxndon-Regular, Clarendon" font-size="36" font-weight="normal" fill="#450600">
+                    <tspan x="15" y="51">ESC</tspan>
+                </text>
+            </g>
+        </g>
+    </g>
+</svg>

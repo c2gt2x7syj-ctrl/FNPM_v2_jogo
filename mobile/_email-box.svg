@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg id="Camada_2" data-name="Camada 2" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 612.56 67.64">
+  <defs>
+    <style>
+      .cls-1 {
+        fill: url(#Gradiente_sem_nome_162);
+        stroke: url(#Gradiente_sem_nome_163);
+        stroke-miterlimit: 10;
+        stroke-width: 5px;
+      }
+    </style>
+    <radialGradient id="Gradiente_sem_nome_162" data-name="Gradiente sem nome 162" cx="312.83" cy="33.82" fx="312.83" fy="33.82" r="211.23" gradientTransform="translate(-13.61) scale(1.02 1)" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#fff0ac"/>
+      <stop offset=".42" stop-color="#fea"/>
+      <stop offset=".57" stop-color="#ffeaa3"/>
+      <stop offset=".68" stop-color="#ffe297"/>
+      <stop offset=".76" stop-color="#ffd786"/>
+      <stop offset=".84" stop-color="#ffc970"/>
+      <stop offset=".91" stop-color="#ffb755"/>
+      <stop offset=".96" stop-color="#ffa235"/>
+      <stop offset="1" stop-color="#ff931e"/>
+    </radialGradient>
+    <radialGradient id="Gradiente_sem_nome_163" data-name="Gradiente sem nome 163" cx="231.74" cy="65.14" fx="231.74" fy="65.14" r="146.05" gradientTransform="translate(-46.61 -16.4) scale(1.52 .77)" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#3fa9f5"/>
+      <stop offset=".04" stop-color="#59a2ea"/>
+      <stop offset=".1" stop-color="#8099dc"/>
+      <stop offset=".16" stop-color="#a291cf"/>
+      <stop offset=".24" stop-color="#bf8ac4"/>
+      <stop offset=".32" stop-color="#d684bb"/>
+      <stop offset=".41" stop-color="#e880b4"/>
+      <stop offset=".52" stop-color="#f57daf"/>
+      <stop offset=".67" stop-color="#fc7bac"/>
+      <stop offset="1" stop-color="#ff7bac"/>
+    </radialGradient>
+  </defs>
+  <g id="Camada_1-2" data-name="Camada 1">
+    <rect class="cls-1" x="2.5" y="2.5" width="607.56" height="62.64"/>
+  </g>
+</svg>
