@@ -1,0 +1,9 @@
+{
+  "name": "FNPM v2",
+  "short_name": "FNPM",
+  "display": "standalone",
+  "orientation": "landscape",
+  "start_url": ".",
+  "background_color": "#000",
+  "theme_color": "#000"
+}

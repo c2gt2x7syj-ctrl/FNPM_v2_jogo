@@ -1,3 +1,61 @@
+// ── TOUCH CONTROLS (MOBILE) ───────────────────────────────
+let touchStartY = null, touchStartX = null;
+function touchStarted() {
+  touchStartY = touches[0]?.y;
+  touchStartX = touches[0]?.x;
+  return false;
+}
+
+function touchEnded() {
+  if (touchStartY === null || touchStartX === null) return false;
+  let dy = touches[0]?.y - touchStartY;
+  let dx = touches[0]?.x - touchStartX;
+  // START: tap inicia
+  if (gameState === "START") {
+    try { userStartAudio(); } catch(e) {}
+    tvTransitionFrame = 0;
+    gameState = "TV_TRANSITION";
+    touchStartY = null; touchStartX = null;
+    return false;
+  }
+  // LOADING: tap inicia
+  if (gameState === "LOADING") {
+    loadingBarFrame = 0;
+    gameState = "LOADING_BAR";
+    touchStartY = null; touchStartX = null;
+    return false;
+  }
+  // PLAYING: swipe up/down move DJ, tap right acelera
+  if (gameState === "PLAYING") {
+    if (dy !== undefined && Math.abs(dy) > 30 && Math.abs(dy) > Math.abs(dx)) {
+      if (dy > 0) dj.subir();
+      else        dj.descer();
+    } else if (touchStartX !== null && touchStartX > width * 0.6) {
+      // tap no lado direito = boost
+      cursorX += 80;
+    }
+    touchStartY = null; touchStartX = null;
+    return false;
+  }
+  // RANKING: tap no topo = R, tap embaixo = ESC
+  if (gameState === "RANKING") {
+    if (touchStartY < height * 0.5) {
+      initGame();
+      somGameplay.setVolume(0.4);
+      somGameplay.loop();
+      gameState = "PLAYING";
+    } else {
+      inputEmail.value('');
+      inputNome.value('');
+      showLoginUI();
+      gameState = "LOGIN";
+    }
+    touchStartY = null; touchStartX = null;
+    return false;
+  }
+  touchStartY = null; touchStartX = null;
+  return false;
+}
 // ============================================================
 //  FNPM v2 — OCP Sets | p5.js  (espaco logico 1920x1080)
 //  Fluxo: START → TV_TRANSITION → LOGIN → TV_TRANSITION2 → LOADING → LOADING_BAR → PLAYING → RANKING
@@ -24,6 +82,7 @@ let imgFundoLoading;
 let imgLoginScreen;
 let imgRankingBg;
 let fonteClarendon, somTrilha, somGameplay, somColeta;
+let assetsLoaded = false;
 let sonsColisao = [];
 
 // Estado do jogo
@@ -52,82 +111,78 @@ let _top5Cache = [];
 
 // ── PRELOAD ──────────────────────────────────────────────────
 function preload() {
-  fonteClarendon = loadFont('Clarendon_-Regular.ttf');
-  soundFormats('mp3', 'wav');
-  somTrilha   = loadSound('trilha_jogo.wav');
-  somGameplay = loadSound('trilha_gameplay.wav');
-  somColeta   = loadSound('pedidos_coleta.mp3');
-  sonsColisao.push(loadSound('musica_nao.mp3'));
-  sonsColisao.push(loadSound('karalhooo.mp3'));
-  sonsColisao.push(loadSound('ai_caralho.mp3'));
-
-  imgBg       = loadImage('BG_FNPM.png');
-  imgBgAzul   = loadImage('bg-azul-f.png');
-  imgStart    = loadImage('bg-start_screen.svg');
-  imgLogoBox  = loadImage('logo-box.svg');
-  imgTvFlores = loadImage('tv_flores.png');
-  imgNameBox  = loadImage('_name-box.svg');
-  imgEmailBox = loadImage('_email-box.svg');
-  imgPlayBox  = loadImage('play-box.svg');
-  imgDJ       = loadImage('dedo_pixel_strong.png');
-  djChars.push(loadImage('dedo_pixel_strong.png'));
-  djChars.push(loadImage('cara_pixel.png'));
-  djChars.push(loadImage('pixel_art_less.png'));
-  djChars.push(loadImage('pixel_art.png'));
-  // Proporções reais: h=180, w proporcional
+  fonteClarendon = loadFont('Clarendon_-Regular.ttf', assetReady, assetFail);
+  imgBg       = loadImage('BG_FNPM.png', assetReady, assetFail);
+  imgBgAzul   = loadImage('bg-azul-f.png', assetReady, assetFail);
+  imgStart    = loadImage('bg-start_screen.svg', assetReady, assetFail);
+  imgLogoBox  = loadImage('logo-box.svg', assetReady, assetFail);
+  imgTvFlores = loadImage('tv_flores.png', assetReady, assetFail);
+  imgNameBox  = loadImage('_name-box.svg', assetReady, assetFail);
+  imgEmailBox = loadImage('_email-box.svg', assetReady, assetFail);
+  imgPlayBox  = loadImage('play-box.svg', assetReady, assetFail);
+  imgDJ       = loadImage('dedo_pixel_strong.png', assetReady, assetFail);
+  djChars.push(loadImage('dedo_pixel_strong.png', assetReady, assetFail));
+  djChars.push(loadImage('cara_pixel.png', assetReady, assetFail));
+  djChars.push(loadImage('pixel_art_less.png', assetReady, assetFail));
+  djChars.push(loadImage('pixel_art.png', assetReady, assetFail));
   djSizes.push({w: 83, h: 180});   // dedo
   djSizes.push({w: 180, h: 180});  // cara
   djSizes.push({w: 166, h: 180});  // cora
   djSizes.push({w: 140, h: 180});  // cabeca-ocp
-  imgCursor   = loadImage('cursor.png');
-  imgMusica   = loadImage('musica-obstacle.png');
+  imgCursor   = loadImage('cursor.png', assetReady, assetFail);
+  imgMusica   = loadImage('musica-obstacle.png', assetReady, assetFail);
+  imgBons.push(loadImage('agua-order.png', assetReady, assetFail));
+  imgBons.push(loadImage('aconta-order.png', assetReady, assetFail));
+  imgBons.push(loadImage('cerveja-order.png', assetReady, assetFail));
+  imgBons.push(loadImage('toalha-order.png', assetReady, assetFail));
+  imgBtnR   = loadImage('R-botao.svg', assetReady, assetFail);
+  imgBtnEsc = loadImage('esc-botao.svg', assetReady, assetFail);
+  imgSimboloVida = loadImage('simbolo_vida.svg', assetReady, assetFail);
+  imgCimaSeta = loadImage('cima_seta.svg', assetReady, assetFail);
+  imgBaixoSeta = loadImage('baixo-seta.svg', assetReady, assetFail);
+  imgDireitaSeta = loadImage('direita-seta.svg', assetReady, assetFail);
+  imgFundoLoading = loadImage('Fundo_loading-screen.png', assetReady, assetFail);
+  imgLoginScreen  = loadImage('login_screen.png', assetReady, assetFail);
+  imgRankingBg    = loadImage('rankingbg_screen.png', assetReady, assetFail);
+  // Sons só carregam após interação do usuário
+}
 
-  imgBons.push(loadImage('agua-order.png'));
-  imgBons.push(loadImage('aconta-order.png'));
-  imgBons.push(loadImage('cerveja-order.png'));
-  imgBons.push(loadImage('toalha-order.png'));
-
-  imgBtnR   = loadImage('R-botao.svg');
-  imgBtnEsc = loadImage('esc-botao.svg');
-
-  imgSimboloVida = loadImage('simbolo_vida.svg');
-
-  imgCimaSeta = loadImage('cima_seta.svg');
-  imgBaixoSeta = loadImage('baixo-seta.svg');
-  imgDireitaSeta = loadImage('direita-seta.svg');
-
-  imgFundoLoading = loadImage('Fundo_loading-screen.png');
-
-  imgLoginScreen  = loadImage('login_screen.png');
-  imgRankingBg    = loadImage('rankingbg_screen.png');
+let assetsToLoad = 27; // ajuste conforme o número de assets
+let assetsLoadedCount = 0;
+function assetReady() {
+  assetsLoadedCount++;
+  if (assetsLoadedCount >= assetsToLoad) assetsLoaded = true;
+}
+function assetFail(e) {
+  assetsLoadedCount++;
+  if (assetsLoadedCount >= assetsToLoad) assetsLoaded = true;
+}
 }
 
 // ── SETUP ────────────────────────────────────────────────────
 function setup() {
   createCanvas(windowWidth, windowHeight);
+  // Força canvas para o topo do DOM
+  let c = document.querySelector('canvas');
+  if (c) {
+    c.style.position = 'fixed';
+    c.style.top = '0';
+    c.style.left = '0';
+    c.style.width = '100vw';
+    c.style.height = '100vh';
+    c.style.zIndex = '1';
+  }
   pixelDensity(displayDensity());
   calcRatio();
   imageMode(CENTER);
   rectMode(CENTER);
   textAlign(CENTER, CENTER);
   textFont(fonteClarendon);
-  // Pixelizar personagens
-  for (var i = 0; i < djChars.length; i++) {
-    djChars[i] = pixelate(djChars[i], 6);
-  }
-  // Pistas — extraídas das posições do dedo e da cerveja no Sketch Game_screen
   andaresY = [LH * 0.823, LH * 0.535, LH * 0.246];
   setupLoginUI();
+  // Sons só carregam após interação do usuário
 }
 
-function pixelate(img, res) {
-  var g = createGraphics(res, res);
-  g.pixelDensity(1);
-  g.image(img, 0, 0, res, res);
-  var out = g.get();
-  g.remove();
-  return out;
-}
 
 function calcRatio() {
   ratio = min(windowWidth / LW, windowHeight / LH);
@@ -153,7 +208,7 @@ function setupLoginUI() {
   inputNome = createInput('');
   inputNome.attribute('placeholder', 'NOME');
 
-  btnPlay = createButton('');
+  btnPlay = createButton('ENTRAR');
   btnPlay.mousePressed(registerLead);
 
   styleInputs();
@@ -244,6 +299,14 @@ function registerLead() {
 
 // ── DRAW LOOP ─────────────────────────────────────────────────
 function draw() {
+  if (!assetsLoaded) {
+    background(0);
+    fill(255);
+    textAlign(CENTER, CENTER);
+    textSize(32);
+    text('Carregando...', width/2, height/2);
+    return;
+  }
   background(10);
   push();
     translate(ox, oy);
@@ -257,6 +320,16 @@ function draw() {
     else if (gameState === "PLAYING")         playGame();
     else if (gameState === "RANKING")         drawRankingScreen();
   pop();
+  // Carrega sons na primeira interação do usuário
+  if (!somTrilha) {
+    soundFormats('mp3', 'wav');
+    somTrilha   = loadSound('trilha_jogo.wav');
+    somGameplay = loadSound('trilha_gameplay.wav');
+    somColeta   = loadSound('pedidos_coleta.mp3');
+    sonsColisao.push(loadSound('musica_nao.mp3'));
+    sonsColisao.push(loadSound('karalhooo.mp3'));
+    sonsColisao.push(loadSound('ai_caralho.mp3'));
+  }
 }
 
 // ── TELAS ─────────────────────────────────────────────────────
