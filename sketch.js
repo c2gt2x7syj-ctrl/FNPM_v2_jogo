@@ -728,6 +728,7 @@ function drawRankingScreen() {
 function keyPressed() {
   // START → TV_TRANSITION → LOGIN
   if (gameState === "START" && key === ' ') {
+    try { userStartAudio(); } catch(e) {}
     tvTransitionFrame = 0;
     gameState = "TV_TRANSITION";
   }
