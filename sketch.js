@@ -113,7 +113,7 @@ function setup() {
   textFont(fonteClarendon);
   // Pixelizar personagens
   for (var i = 0; i < djChars.length; i++) {
-    djChars[i] = pixelate(djChars[i], 6);
+    // djChars[i] = pixelate(djChars[i], 24); // efeito removido
   }
   // Pistas — extraídas das posições do dedo e da cerveja no Sketch Game_screen
   andaresY = [LH * 0.823, LH * 0.535, LH * 0.246];
