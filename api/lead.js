@@ -18,11 +18,47 @@ function isValidEmail(email) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email);
 }
 
+function normalizeSupabaseUrl(value) {
+  const raw = cleanText(value, 1000);
+  if (!raw) return '';
+
+  const withoutTableSuffix = raw.split('/SUPABASE_LEADS_TABLE=')[0].replace(/\/$/, '');
+  if (/^https?:\/\//i.test(withoutTableSuffix)) return withoutTableSuffix;
+  if (/^[a-z0-9-]+$/i.test(withoutTableSuffix)) {
+    return `https://${withoutTableSuffix}.supabase.co`;
+  }
+
+  return withoutTableSuffix;
+}
+
+function normalizeSupabaseTable(value) {
+  const raw = cleanText(value, 500);
+  if (!raw) return 'fnpm_login_leads';
+
+  const envAssignmentMatch = raw.match(/SUPABASE_LEADS_TABLE=([^/?#]+)/);
+  if (envAssignmentMatch) return envAssignmentMatch[1];
+
+  if (raw.includes('=')) {
+    const afterEquals = raw.split('=').pop();
+    if (afterEquals) return afterEquals;
+  }
+
+  const pathMatch = raw.match(/\/([^/?#]+)$/);
+  if (pathMatch && !raw.startsWith(pathMatch[1])) return pathMatch[1];
+
+  return raw;
+}
+
 function getSupabaseConfig() {
+  const rawUrl = process.env.SUPABASE_URL || '';
+  const rawTable =
+    process.env.SUPABASE_LEADS_TABLE ||
+    (rawUrl.includes('SUPABASE_LEADS_TABLE=') ? rawUrl : 'fnpm_login_leads');
+
   return {
-    url: cleanText(process.env.SUPABASE_URL, 1000).replace(/\/$/, ''),
+    url: normalizeSupabaseUrl(rawUrl),
     key: cleanText(process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY, 2000),
-    table: cleanText(process.env.SUPABASE_LEADS_TABLE || 'fnpm_login_leads', 120),
+    table: normalizeSupabaseTable(rawTable),
   };
 }
 
