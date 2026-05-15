@@ -50,14 +50,32 @@ function normalizeSupabaseTable(value) {
 }
 
 function getSupabaseConfig() {
-  const rawUrl = process.env.SUPABASE_URL || '';
+  const rawUrl =
+    process.env.SUPABASE_URL ||
+    process.env.supabase_url ||
+    process.env.url ||
+    process.env.URL ||
+    process.env.table ||
+    '';
+  const rawKey =
+    process.env.SUPABASE_SERVICE_ROLE_KEY ||
+    process.env.SUPABASE_SERVICE_KEY ||
+    process.env.SUPABASE_SERVICE ||
+    process.env.SUPABASE_KEY ||
+    process.env.SUPABASE_ANON_KEY ||
+    process.env.service ||
+    process.env.SERVICE ||
+    '';
   const rawTable =
     process.env.SUPABASE_LEADS_TABLE ||
+    process.env.supabase_leads_table ||
+    process.env.table ||
+    process.env.TABLE ||
     (rawUrl.includes('SUPABASE_LEADS_TABLE=') ? rawUrl : 'fnpm_login_leads');
 
   return {
     url: normalizeSupabaseUrl(rawUrl),
-    key: cleanText(process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY, 2000),
+    key: cleanText(rawKey, 2000),
     table: normalizeSupabaseTable(rawTable),
   };
 }
