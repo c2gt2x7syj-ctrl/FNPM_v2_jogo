@@ -1,60 +1,179 @@
-// ── TOUCH CONTROLS (MOBILE) ───────────────────────────────
+// ── DEVICE + TOUCH CONTROLS ──────────────────────────────────
+const FNPM_DEVICE = window.FNPM_DEVICE || "auto";
+const FNPM_IS_MOBILE =
+  FNPM_DEVICE === "mobile" ||
+  (FNPM_DEVICE === "auto" &&
+    (window.matchMedia("(pointer: coarse)").matches ||
+      /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)));
+
+const MOBILE_CONTROLS = {
+  up:    { x: 160,  y: 746, w: 190, h: 150 },
+  down:  { x: 160,  y: 926, w: 190, h: 150 },
+  boost: { x: 1745, y: 850, w: 260, h: 230 }
+};
+
 let touchStartY = null, touchStartX = null;
+let activeMobileControl = null;
+let mobileBoostActive = false;
+let wasPortraitBlocked = false;
+
+function assetPath(file) {
+  return "/" + String(file).replace(/^\/+/, "");
+}
+
+function isPortraitMobile() {
+  return FNPM_IS_MOBILE && windowHeight > windowWidth;
+}
+
+function screenToLogical(x, y) {
+  return {
+    x: (x - ox) / ratio,
+    y: (y - oy) / ratio
+  };
+}
+
+function pointInBox(point, box) {
+  return (
+    point.x >= box.x - box.w / 2 &&
+    point.x <= box.x + box.w / 2 &&
+    point.y >= box.y - box.h / 2 &&
+    point.y <= box.y + box.h / 2
+  );
+}
+
+function beginStartTransition() {
+  try { userStartAudio(); } catch(e) {}
+  tvTransitionFrame = 0;
+  gameState = "TV_TRANSITION";
+}
+
+function beginLoadingBar() {
+  loadingBarFrame = 0;
+  gameState = "LOADING_BAR";
+}
+
+function restartCurrentPlayer() {
+  initGame();
+  if (soundReady(somGameplay)) {
+    somGameplay.setVolume(0.4);
+    somGameplay.loop();
+  }
+  gameState = "PLAYING";
+}
+
+function soundReady(sound) {
+  if (!sound) return false;
+  if (typeof sound.isLoaded === "function") return sound.isLoaded();
+  if (typeof sound.isLoaded === "boolean") return sound.isLoaded;
+  return true;
+}
+
+function returnToLogin() {
+  inputEmail.value("");
+  inputNome.value("");
+  showLoginUI();
+  gameState = "LOGIN";
+}
+
+function hasBoostTouch() {
+  if (!FNPM_IS_MOBILE || !touches || !touches.length) return false;
+  return touches.some(function(t) {
+    return pointInBox(screenToLogical(t.x, t.y), MOBILE_CONTROLS.boost);
+  });
+}
+
+function pressMobileControl(point) {
+  if (!FNPM_IS_MOBILE || gameState !== "PLAYING" || !dj) return false;
+
+  if (pointInBox(point, MOBILE_CONTROLS.up)) {
+    dj.descer();
+    activeMobileControl = "up";
+    return true;
+  }
+
+  if (pointInBox(point, MOBILE_CONTROLS.down)) {
+    dj.subir();
+    activeMobileControl = "down";
+    return true;
+  }
+
+  if (pointInBox(point, MOBILE_CONTROLS.boost)) {
+    mobileBoostActive = true;
+    activeMobileControl = "boost";
+    return true;
+  }
+
+  return false;
+}
+
+function handlePointerStart(x, y) {
+  touchStartX = x;
+  touchStartY = y;
+  activeMobileControl = null;
+
+  if (isPortraitMobile()) return false;
+
+  if (gameState === "PLAYING") {
+    pressMobileControl(screenToLogical(x, y));
+    mobileBoostActive = mobileBoostActive || hasBoostTouch();
+  }
+
+  return false;
+}
+
+function handlePointerEnd(x, y) {
+  if (touchStartY === null || touchStartX === null) return false;
+
+  if (isPortraitMobile()) {
+    touchStartY = null;
+    touchStartX = null;
+    return false;
+  }
+
+  var dy = y - touchStartY;
+  var dx = x - touchStartX;
+
+  if (gameState === "START") {
+    beginStartTransition();
+  } else if (gameState === "LOADING") {
+    beginLoadingBar();
+  } else if (gameState === "PLAYING") {
+    if (!activeMobileControl && Math.abs(dy) > 34 && Math.abs(dy) > Math.abs(dx)) {
+      if (dy > 0) dj.subir();
+      else        dj.descer();
+    }
+    mobileBoostActive = hasBoostTouch();
+  } else if (gameState === "RANKING") {
+    if (touchStartY < height * 0.5) restartCurrentPlayer();
+    else returnToLogin();
+  }
+
+  touchStartY = null;
+  touchStartX = null;
+  activeMobileControl = null;
+  return false;
+}
+
 function touchStarted() {
-  touchStartY = touches[0]?.y;
-  touchStartX = touches[0]?.x;
+  var t = touches && touches.length ? touches[0] : { x: mouseX, y: mouseY };
+  return handlePointerStart(t.x, t.y);
+}
+
+function touchMoved() {
+  if (gameState === "PLAYING") mobileBoostActive = hasBoostTouch();
   return false;
 }
 
 function touchEnded() {
-  if (touchStartY === null || touchStartX === null) return false;
-  let dy = touches[0]?.y - touchStartY;
-  let dx = touches[0]?.x - touchStartX;
-  // START: tap inicia
-  if (gameState === "START") {
-    try { userStartAudio(); } catch(e) {}
-    tvTransitionFrame = 0;
-    gameState = "TV_TRANSITION";
-    touchStartY = null; touchStartX = null;
-    return false;
-  }
-  // LOADING: tap inicia
-  if (gameState === "LOADING") {
-    loadingBarFrame = 0;
-    gameState = "LOADING_BAR";
-    touchStartY = null; touchStartX = null;
-    return false;
-  }
-  // PLAYING: swipe up/down move DJ, tap right acelera
-  if (gameState === "PLAYING") {
-    if (dy !== undefined && Math.abs(dy) > 30 && Math.abs(dy) > Math.abs(dx)) {
-      if (dy > 0) dj.subir();
-      else        dj.descer();
-    } else if (touchStartX !== null && touchStartX > width * 0.6) {
-      // tap no lado direito = boost
-      cursorX += 80;
-    }
-    touchStartY = null; touchStartX = null;
-    return false;
-  }
-  // RANKING: tap no topo = R, tap embaixo = ESC
-  if (gameState === "RANKING") {
-    if (touchStartY < height * 0.5) {
-      initGame();
-      somGameplay.setVolume(0.4);
-      somGameplay.loop();
-      gameState = "PLAYING";
-    } else {
-      inputEmail.value('');
-      inputNome.value('');
-      showLoginUI();
-      gameState = "LOGIN";
-    }
-    touchStartY = null; touchStartX = null;
-    return false;
-  }
-  touchStartY = null; touchStartX = null;
-  return false;
+  return handlePointerEnd(mouseX, mouseY);
+}
+
+function mousePressed() {
+  return handlePointerStart(mouseX, mouseY);
+}
+
+function mouseReleased() {
+  return handlePointerEnd(mouseX, mouseY);
 }
 // ============================================================
 //  FNPM v2 — OCP Sets | p5.js  (espaco logico 1920x1080)
@@ -111,39 +230,39 @@ let _top5Cache = [];
 
 // ── PRELOAD ──────────────────────────────────────────────────
 function preload() {
-  fonteClarendon = loadFont('Clarendon_-Regular.ttf', assetReady, assetFail);
-  imgBg       = loadImage('BG_FNPM.png', assetReady, assetFail);
-  imgBgAzul   = loadImage('bg-azul-f.png', assetReady, assetFail);
-  imgStart    = loadImage('bg-start_screen.svg', assetReady, assetFail);
-  imgLogoBox  = loadImage('logo-box.svg', assetReady, assetFail);
-  imgTvFlores = loadImage('tv_flores.png', assetReady, assetFail);
-  imgNameBox  = loadImage('_name-box.svg', assetReady, assetFail);
-  imgEmailBox = loadImage('_email-box.svg', assetReady, assetFail);
-  imgPlayBox  = loadImage('play-box.svg', assetReady, assetFail);
-  imgDJ       = loadImage('dedo_pixel_strong.png', assetReady, assetFail);
-  djChars.push(loadImage('dedo_pixel_strong.png', assetReady, assetFail));
-  djChars.push(loadImage('cara_pixel.png', assetReady, assetFail));
-  djChars.push(loadImage('pixel_art_less.png', assetReady, assetFail));
-  djChars.push(loadImage('pixel_art.png', assetReady, assetFail));
+  fonteClarendon = loadFont(assetPath('Clarendon_-Regular.ttf'), assetReady, assetFail);
+  imgBg       = loadImage(assetPath('BG_FNPM.png'), assetReady, assetFail);
+  imgBgAzul   = loadImage(assetPath('bg-azul-f.png'), assetReady, assetFail);
+  imgStart    = loadImage(assetPath('bg-start_screen.svg'), assetReady, assetFail);
+  imgLogoBox  = loadImage(assetPath('logo-box.svg'), assetReady, assetFail);
+  imgTvFlores = loadImage(assetPath('tv_flores.png'), assetReady, assetFail);
+  imgNameBox  = loadImage(assetPath('_name-box.svg'), assetReady, assetFail);
+  imgEmailBox = loadImage(assetPath('_email-box.svg'), assetReady, assetFail);
+  imgPlayBox  = loadImage(assetPath('play-box.svg'), assetReady, assetFail);
+  imgDJ       = loadImage(assetPath('dedo_pixel_strong.png'), assetReady, assetFail);
+  djChars.push(loadImage(assetPath('dedo_pixel_strong.png'), assetReady, assetFail));
+  djChars.push(loadImage(assetPath('cara_pixel.png'), assetReady, assetFail));
+  djChars.push(loadImage(assetPath('pixel_art_less.png'), assetReady, assetFail));
+  djChars.push(loadImage(assetPath('pixel_art.png'), assetReady, assetFail));
   djSizes.push({w: 83, h: 180});   // dedo
   djSizes.push({w: 180, h: 180});  // cara
   djSizes.push({w: 166, h: 180});  // cora
   djSizes.push({w: 140, h: 180});  // cabeca-ocp
-  imgCursor   = loadImage('cursor.png', assetReady, assetFail);
-  imgMusica   = loadImage('musica-obstacle.png', assetReady, assetFail);
-  imgBons.push(loadImage('agua-order.png', assetReady, assetFail));
-  imgBons.push(loadImage('aconta-order.png', assetReady, assetFail));
-  imgBons.push(loadImage('cerveja-order.png', assetReady, assetFail));
-  imgBons.push(loadImage('toalha-order.png', assetReady, assetFail));
-  imgBtnR   = loadImage('R-botao.svg', assetReady, assetFail);
-  imgBtnEsc = loadImage('esc-botao.svg', assetReady, assetFail);
-  imgSimboloVida = loadImage('simbolo_vida.svg', assetReady, assetFail);
-  imgCimaSeta = loadImage('cima_seta.svg', assetReady, assetFail);
-  imgBaixoSeta = loadImage('baixo-seta.svg', assetReady, assetFail);
-  imgDireitaSeta = loadImage('direita-seta.svg', assetReady, assetFail);
-  imgFundoLoading = loadImage('Fundo_loading-screen.png', assetReady, assetFail);
-  imgLoginScreen  = loadImage('login_screen.png', assetReady, assetFail);
-  imgRankingBg    = loadImage('rankingbg_screen.png', assetReady, assetFail);
+  imgCursor   = loadImage(assetPath('cursor.png'), assetReady, assetFail);
+  imgMusica   = loadImage(assetPath('musica-obstacle.png'), assetReady, assetFail);
+  imgBons.push(loadImage(assetPath('agua-order.png'), assetReady, assetFail));
+  imgBons.push(loadImage(assetPath('aconta-order.png'), assetReady, assetFail));
+  imgBons.push(loadImage(assetPath('cerveja-order.png'), assetReady, assetFail));
+  imgBons.push(loadImage(assetPath('toalha-order.png'), assetReady, assetFail));
+  imgBtnR   = loadImage(assetPath('R-botao.svg'), assetReady, assetFail);
+  imgBtnEsc = loadImage(assetPath('esc-botao.svg'), assetReady, assetFail);
+  imgSimboloVida = loadImage(assetPath('simbolo_vida.svg'), assetReady, assetFail);
+  imgCimaSeta = loadImage(assetPath('cima_seta.svg'), assetReady, assetFail);
+  imgBaixoSeta = loadImage(assetPath('baixo-seta.svg'), assetReady, assetFail);
+  imgDireitaSeta = loadImage(assetPath('direita-seta.svg'), assetReady, assetFail);
+  imgFundoLoading = loadImage(assetPath('Fundo_loading-screen.png'), assetReady, assetFail);
+  imgLoginScreen  = loadImage(assetPath('login_screen.png'), assetReady, assetFail);
+  imgRankingBg    = loadImage(assetPath('rankingbg_screen.png'), assetReady, assetFail);
   // Sons só carregam após interação do usuário
 }
 
@@ -156,7 +275,6 @@ function assetReady() {
 function assetFail(e) {
   assetsLoadedCount++;
   if (assetsLoadedCount >= assetsToLoad) assetsLoaded = true;
-}
 }
 
 // ── SETUP ────────────────────────────────────────────────────
@@ -217,7 +335,7 @@ function setupLoginUI() {
 }
 
 function styleInputs() {
-  var fs = floor(22 * ratio) + 'px';
+  var fs = max(floor(22 * ratio), FNPM_IS_MOBILE ? 14 : 11) + 'px';
   [inputEmail, inputNome].forEach(function(inp) {
     inp.style('background',     'transparent');
     inp.style('border',         'none');
@@ -229,26 +347,31 @@ function styleInputs() {
     inp.style('outline',        'none');
     inp.style('box-shadow',     'none');
     inp.style('padding',        '0');
+    inp.style('z-index',        '3');
   });
   btnPlay.style('background', 'transparent');
   btnPlay.style('border',     'none');
   btnPlay.style('cursor',     'pointer');
   btnPlay.style('outline',    'none');
+  btnPlay.style('color',      'transparent');
+  btnPlay.style('z-index',    '3');
 }
 
 function repositionUI() {
   if (!inputNome) return;
-  var fw = floor(608 * ratio), fh = floor(63 * ratio);
-  var bw = floor(109 * ratio), bh = floor(77 * ratio);
+  var fw = max(floor(608 * ratio), FNPM_IS_MOBILE ? min(windowWidth * 0.56, 340) : 0);
+  var fh = max(floor(63 * ratio),  FNPM_IS_MOBILE ? 36 : 0);
+  var bw = max(floor(109 * ratio), FNPM_IS_MOBILE ? 54 : 0);
+  var bh = max(floor(77 * ratio),  FNPM_IS_MOBILE ? 46 : 0);
 
   inputNome.size(fw, fh);
-  inputNome.position(lx(657), ly(610));
+  inputNome.position(lx(961) - fw / 2, ly(642) - fh / 2);
 
   inputEmail.size(fw, fh);
-  inputEmail.position(lx(657), ly(710));
+  inputEmail.position(lx(961) - fw / 2, ly(742) - fh / 2);
 
   btnPlay.size(bw, bh);
-  btnPlay.position(lx(1156), ly(810));
+  btnPlay.position(lx(1211) - bw / 2, ly(849) - bh / 2);
 
   styleInputs();
 }
@@ -285,11 +408,20 @@ function registerLead() {
   currentUser.nome  = nome;
   currentUser.email = email;
 
-  // Enviar lead para API Vercel (proxy para Google Sheets)
+  // Enviar lead para API Vercel.
   fetch('/api/lead', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ nome: nome, email: email })
+    body: JSON.stringify({
+      nome: nome,
+      email: email,
+      device: FNPM_IS_MOBILE ? 'mobile' : 'desktop',
+      page_path: window.location.pathname,
+      referrer: document.referrer || '',
+      language: navigator.language || '',
+      viewport_width: window.innerWidth,
+      viewport_height: window.innerHeight
+    })
   }).catch(function() {});
 
   hideLoginUI();
@@ -307,6 +439,17 @@ function draw() {
     text('Carregando...', width/2, height/2);
     return;
   }
+
+  if (isPortraitMobile()) {
+    hideLoginUI();
+    drawRotateDevice();
+    wasPortraitBlocked = true;
+    return;
+  }
+
+  if (wasPortraitBlocked && gameState === "LOGIN") showLoginUI();
+  wasPortraitBlocked = false;
+
   background(10);
   push();
     translate(ox, oy);
@@ -323,21 +466,54 @@ function draw() {
   // Carrega sons na primeira interação do usuário
   if (!somTrilha) {
     soundFormats('mp3', 'wav');
-    somTrilha   = loadSound('trilha_jogo.wav');
-    somGameplay = loadSound('trilha_gameplay.wav');
-    somColeta   = loadSound('pedidos_coleta.mp3');
-    sonsColisao.push(loadSound('musica_nao.mp3'));
-    sonsColisao.push(loadSound('karalhooo.mp3'));
-    sonsColisao.push(loadSound('ai_caralho.mp3'));
+    somTrilha   = loadSound(assetPath('trilha_jogo.wav'));
+    somGameplay = loadSound(assetPath('trilha_gameplay.wav'));
+    somColeta   = loadSound(assetPath('pedidos_coleta.mp3'));
+    sonsColisao.push(loadSound(assetPath('musica_nao.mp3')));
+    sonsColisao.push(loadSound(assetPath('karalhooo.mp3')));
+    sonsColisao.push(loadSound(assetPath('ai_caralho.mp3')));
   }
 }
 
 // ── TELAS ─────────────────────────────────────────────────────
 
+function drawRotateDevice() {
+  background(10);
+  push();
+    imageMode(CENTER);
+    drawCoverImage(imgBgAzul, width / 2, height / 2, width, height);
+    var logoW = min(width * 0.82, 520);
+    var logoH = logoW * 462 / 908;
+    image(imgLogoBox, width / 2, height * 0.42, logoW, logoH);
+    fill(255, 240, 172);
+    noStroke();
+    textAlign(CENTER, CENTER);
+    textSize(max(22, min(36, width * 0.08)));
+    text("GIRE O CELULAR", width / 2, height * 0.6);
+    textSize(max(14, min(22, width * 0.045)));
+    text("para jogar em paisagem", width / 2, height * 0.65);
+  pop();
+}
+
+function drawCoverImage(img, cx, cy, targetW, targetH) {
+  var imgRatio = img.width / img.height;
+  var targetRatio = targetW / targetH;
+  var drawW = targetW;
+  var drawH = targetH;
+
+  if (targetRatio > imgRatio) {
+    drawH = drawW / imgRatio;
+  } else {
+    drawW = drawH * imgRatio;
+  }
+
+  image(img, cx, cy, drawW, drawH);
+}
+
 // START SCREEN
 function drawStart() {
   // Iniciar trilha se ainda não estiver tocando
-  if (!somTrilha.isPlaying()) {
+  if (soundReady(somTrilha) && !somTrilha.isPlaying()) {
     somTrilha.setVolume(0.4);
     somTrilha.loop();
   }
@@ -347,6 +523,25 @@ function drawStart() {
   fill(255, 240, 172);
   noStroke();
   textSize(28);
+
+  if (FNPM_IS_MOBILE) {
+    var mobileParte1 = 'Toque para ';
+    var mobileParte2 = 'COMEÇAR';
+    var mobileTotalW = textWidth(mobileParte1 + mobileParte2);
+    var mobileStartX = 935 - mobileTotalW / 2;
+    textAlign(LEFT, CENTER);
+    fill(255, 240, 172);
+    text(mobileParte1, mobileStartX, 40);
+    if (floor(frameCount / 30) % 2 === 0) {
+      fill(211, 73, 13);
+    } else {
+      fill(211, 73, 13, 0);
+    }
+    text(mobileParte2, mobileStartX + textWidth(mobileParte1), 40);
+    textAlign(CENTER, CENTER);
+    return;
+  }
+
   // Desenhar frase em partes para colorir ESPAÇO
   var parte1 = 'Pressione "';
   var parte2 = 'ESPAÇO';
@@ -510,10 +705,12 @@ function drawLoadingBar() {
 
   // Quando completo, inicia o jogo
   if (progress >= 1.0) {
-    somTrilha.stop();
+    if (soundReady(somTrilha)) somTrilha.stop();
     initGame();
-    somGameplay.setVolume(0.4);
-    somGameplay.loop();
+    if (soundReady(somGameplay)) {
+      somGameplay.setVolume(0.4);
+      somGameplay.loop();
+    }
     gameState = "PLAYING";
   }
 }
@@ -560,14 +757,19 @@ function drawLoading() {
   fill(80, 30, 5); noStroke();
   textAlign(LEFT, TOP);
   textSize(19);
-  text("Use CIMA e BAIXO para desviar dos pedidos\nindesejados e coletar os outros.", 934, 635);
-  text("Use DIREITA para acelerar.",                                                934, 736);
+  if (FNPM_IS_MOBILE) {
+    text("Toque nas SETAS para trocar de pista\ne fugir dos pedidos indesejados.", 934, 635);
+    text("Segure DIREITA para acelerar.",                                           934, 736);
+  } else {
+    text("Use CIMA e BAIXO para desviar dos pedidos\nindesejados e coletar os outros.", 934, 635);
+    text("Use DIREITA para acelerar.",                                                934, 736);
+  }
   text("São as tuas 2 vidas. Quando uma vida\nfor perdida a luz VERMELHA apagará.",  934, 806);
 
   textAlign(CENTER, CENTER);
   fill(80, 30, 5);
   textSize(26);
-  text("PRESSIONA  ESPAÇO  PARA  COMEÇAR", LW / 2, LH - 58);
+  text(FNPM_IS_MOBILE ? "TOQUE  PARA  COMEÇAR" : "PRESSIONA  ESPAÇO  PARA  COMEÇAR", LW / 2, LH - 58);
 }
 
 // ── GAMEPLAY ──────────────────────────────────────────────────
@@ -589,6 +791,10 @@ function playGame() {
 
   // Seta direita = boost de velocidade
   var boost = keyIsDown(RIGHT_ARROW) ? 4 : 0;
+  if (FNPM_IS_MOBILE) {
+    mobileBoostActive = mobileBoostActive || hasBoostTouch();
+    if (mobileBoostActive) boost = max(boost, 4);
+  }
 
   cursorX += (gameSpeed + boost) * 1.4;
   if (cursorX > LW + 60) cursorX = -60;
@@ -604,7 +810,12 @@ function playGame() {
     collectibles[i].show();
     if (collectibles[i].hits(dj)) {
       // Som curto rítmico na coleta
-      try { somColeta.rate(1.0); somColeta.play(0, 1.0, 0.35, 0, 0.08); } catch(e) {}
+      try {
+        if (soundReady(somColeta)) {
+          somColeta.rate(1.0);
+          somColeta.play(0, 1.0, 0.35, 0, 0.08);
+        }
+      } catch(e) {}
       score += 10;
       successfulCollections++;
       collectibles.splice(i, 1);
@@ -619,7 +830,13 @@ function playGame() {
     obstacles[j].update(boost);
     obstacles[j].show();
     if (obstacles[j].hits(dj)) {
-      try { var sc = random(sonsColisao); sc.rate(1.5); sc.play(); } catch(e) {}
+      try {
+        var sc = random(sonsColisao);
+        if (soundReady(sc)) {
+          sc.rate(1.5);
+          sc.play();
+        }
+      } catch(e) {}
       score = max(0, score - 15);
       dj.resetChar();
       vidas--;
@@ -651,6 +868,31 @@ function playGame() {
   textSize(22);
   text("PONTOS: " + score, 179, 61.5);
   textAlign(CENTER, CENTER);
+
+  drawMobileControls(boost > 0);
+}
+
+function drawMobileControls(isBoosting) {
+  if (!FNPM_IS_MOBILE) return;
+
+  drawMobileButton(MOBILE_CONTROLS.up, imgCimaSeta, activeMobileControl === "up", 42, 82);
+  drawMobileButton(MOBILE_CONTROLS.down, imgBaixoSeta, activeMobileControl === "down", 42, 82);
+  drawMobileButton(MOBILE_CONTROLS.boost, imgDireitaSeta, isBoosting, 92, 38);
+}
+
+function drawMobileButton(box, icon, active, iconW, iconH) {
+  push();
+    rectMode(CENTER);
+    imageMode(CENTER);
+    stroke(237, 0, 140, active ? 235 : 150);
+    strokeWeight(active ? 7 : 4);
+    fill(50, 190, 70, active ? 190 : 118);
+    rect(box.x, box.y, box.w, box.h, 12);
+    noStroke();
+    tint(255, active ? 255 : 215);
+    image(icon, box.x, box.y, iconW, iconH);
+    noTint();
+  pop();
 }
 
 function spawnObject() {
@@ -741,7 +983,7 @@ function saveScore() {
 }
 
 function triggerGameOver() {
-  somGameplay.stop();
+  if (soundReady(somGameplay)) somGameplay.stop();
   _top5Cache = saveScore();
   gameState  = "RANKING";
 }
@@ -786,13 +1028,17 @@ function drawRankingScreen() {
   image(imgBtnR, 1490, 300, 109, 77);
 
   fill(80, 30, 5); textAlign(LEFT, TOP); textSize(21);
-  text("Pressione R,\npara recomeçar", 1435, 368);
+  text(FNPM_IS_MOBILE ? "Toque em cima\npara recomeçar" : "Pressione R,\npara recomeçar", 1435, 368);
 
   // Tecla ESC
   image(imgBtnEsc, 1490, 523, 109, 77);
 
   fill(80, 30, 5); textAlign(LEFT, TOP); textSize(21);
-  text("Pressione ESC\npara jogar como\nNovo Jogador", 1435, 595);
+  text(
+    FNPM_IS_MOBILE ? "Toque embaixo\npara jogar como\nNovo Jogador" : "Pressione ESC\npara jogar como\nNovo Jogador",
+    1435,
+    595
+  );
 
   textAlign(CENTER, CENTER);
 }
@@ -801,14 +1047,11 @@ function drawRankingScreen() {
 function keyPressed() {
   // START → TV_TRANSITION → LOGIN
   if (gameState === "START" && key === ' ') {
-    try { userStartAudio(); } catch(e) {}
-    tvTransitionFrame = 0;
-    gameState = "TV_TRANSITION";
+    beginStartTransition();
   }
   // LOADING → LOADING_BAR
   if (gameState === "LOADING" && key === ' ') {
-    loadingBarFrame = 0;
-    gameState = "LOADING_BAR";
+    beginLoadingBar();
   }
   // Controlos em jogo
   if (gameState === "PLAYING") {
@@ -818,16 +1061,10 @@ function keyPressed() {
   // RANKING → PLAYING (R) ou → LOGIN (ESC)
   if (gameState === "RANKING") {
     if (key === 'r' || key === 'R') {
-      initGame();
-      somGameplay.setVolume(0.4);
-      somGameplay.loop();
-      gameState = "PLAYING";
+      restartCurrentPlayer();
     }
     if (keyCode === ESCAPE) {
-      inputEmail.value('');
-      inputNome.value('');
-      showLoginUI();
-      gameState = "LOGIN";
+      returnToLogin();
     }
   }
 }
