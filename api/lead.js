@@ -49,6 +49,10 @@ function normalizeSupabaseTable(value) {
   return raw;
 }
 
+function isLegacyJwtKey(key) {
+  return /^eyJ[a-zA-Z0-9_-]*\.[a-zA-Z0-9_-]*\.[a-zA-Z0-9_-]*$/.test(key);
+}
+
 function getSupabaseConfig() {
   const rawUrl =
     process.env.SUPABASE_URL ||
@@ -115,14 +119,19 @@ async function saveToSupabase(payload) {
     return { skipped: true, reason: 'missing_supabase_env' };
   }
 
+  const headers = {
+    apikey: key,
+    'Content-Type': 'application/json',
+    Prefer: 'return=representation',
+  };
+
+  if (isLegacyJwtKey(key)) {
+    headers.Authorization = `Bearer ${key}`;
+  }
+
   const response = await fetch(`${url}/rest/v1/${encodeURIComponent(table)}`, {
     method: 'POST',
-    headers: {
-      apikey: key,
-      Authorization: `Bearer ${key}`,
-      'Content-Type': 'application/json',
-      Prefer: 'return=representation',
-    },
+    headers,
     body: JSON.stringify(payload),
   });
 
